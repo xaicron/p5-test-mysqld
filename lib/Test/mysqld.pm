@@ -210,7 +210,26 @@ sub read_log {
 sub _find_program {
     my ($prog, @subdirs) = @_;
     undef $errstr;
-    my $path = _get_path_of($prog);
+
+    my $path;
+    if (my $mysql_config = _get_path_of('mysql_config')) {
+        if (my $include_path = `$mysql_config --include 2> /dev/null`) {
+            chomp $include_path;
+            # Trim option string
+            $include_path =~ s/^-I//;
+            for my $include_dir (qw{ include include/mysql }) {
+                for my $subdir (@subdirs) {
+                    $path = $include_path;
+                    if ($path =~ s|\Q/$include_dir\E$|/$subdir/$prog|
+                            and -x $path) {
+                        return $path;
+                    }
+                }
+            }
+        }
+    }
+
+    $path = _get_path_of($prog);
     return $path
         if $path;
     for my $mysql (_get_path_of('mysql'),
